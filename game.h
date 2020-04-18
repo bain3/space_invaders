@@ -20,3 +20,8 @@ struct Bullet {
 	bool to_remove = false;
 	float bulletSpeed = -2;
 };
+
+struct Bunker {
+    olc::vi2d position;
+    int health = 5;
+};

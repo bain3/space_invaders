@@ -26,7 +26,7 @@ short lives = 3;
 std::array<std::array<Invader, 14>, 5> invaders;
 Player player;
 std::list<Bullet> bullets;
-int bunkerHealth[4] = { 5,5,5,5 };
+Bunker bunkers[4];
 int gameLayer;
 
 
@@ -98,6 +98,11 @@ public:
 				lastInvader = current_invader;
 			}
 		}
+
+        int steps = ScreenWidth()/4;
+		for (int i = 0; i < 4; i++) {
+		    bunkers[i].position = olc::vi2d{ steps*(i+1)-11-steps/2,ScreenHeight()-30 };
+		}
 		return true;
 	}
 
@@ -114,6 +119,7 @@ public:
 
 		// splash text render + lock
 		if (showSplashText) {
+		    SetDrawTarget(nullptr);
 			Clear(olc::BLACK);
 			DrawString(olc::vi2d{ ScreenWidth()/2 - (int)(splashText.size()*8 / 2),ScreenHeight()/2 - 4 }, splashText);
             return !GetKey(olc::Key::Q).bHeld;
@@ -134,20 +140,17 @@ public:
 		DrawSprite(player.position, player_sprite);
 
         // bunker render
-        int steps = ScreenWidth()/4;
-        for (int i = 0; i < 4; i++) {
-            if (bunkerHealth[i] > 0) {
-                DrawDecal(olc::vi2d{ steps*(i+1)-11-steps/2,ScreenHeight()-30 }, bunker_decal);
-            }
+        for (const Bunker& bunker : bunkers) {
+            DrawDecal(bunker.position, bunker_decal);
         }
 
 		// overlay render
 		SetDrawTarget(nullptr);
         Clear(olc::BLANK);
-		for (int i = 0; i < 4; i++) {
-		    std::string text = std::to_string(bunkerHealth[i]);
-		    DrawString(olc::vi2d{ steps*(i+1)-(int)(text.size()*8 / 2)-steps/2+1,ScreenHeight()-27 }, text);
-		}
+        for (const Bunker& bunker : bunkers) {
+            std::string text = std::to_string(bunker.health);
+            DrawString(bunker.position+olc::vi2d{8,3}, text);
+        }
         DrawString(olc::vi2d{ 10,10 }, std::to_string(lives));
 		SetDrawTarget(gameLayer);
 		
@@ -238,6 +241,15 @@ public:
 						break;
 					}
 				}
+				if (!bullet.to_remove) {
+                    for (Bunker &bunker : bunkers) {
+                        if (bunker.health > 0 && bunker.position.x < bullet.position.x &&
+                            bullet.position.x < bunker.position.x + 22 && bullet.position.y >= bunker.position.y) {
+                            bullet.to_remove = true;
+                            bunker.health--;
+                        }
+                    }
+                }
 			}
 		}
 
