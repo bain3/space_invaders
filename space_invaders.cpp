@@ -9,6 +9,8 @@ olc::Decal* invaders_decal;
 olc::Sprite* invaders_sprite;
 olc::Sprite* bunker_sprite;
 olc::Decal* bunker_decal;
+olc::Sprite* effect_sprite;
+olc::Decal* effect_decal;
 int frameCounter = 5;
 float refreshTime = 0.08;
 float lastRefresh;
@@ -16,7 +18,7 @@ float lastInvaderRefresh;
 float shootRefresh;
 int INVADER_SPEED = 4;
 int PLAYER_SPEED = 1;
-float PLAYER_COOLDOWN = 0.1;
+float PLAYER_COOLDOWN = 0.333;
 bool verticalMove = false;
 short front = 4;
 float invaderShootTimer;
@@ -28,6 +30,7 @@ Player player;
 std::list<Bullet> bullets;
 Bunker bunkers[4];
 int gameLayer;
+std::list<Effect> effects;
 
 
 inline bool collision_check(Bullet& bullet, Invader& invader) {
@@ -58,6 +61,8 @@ public:
 		player_sprite = new olc::Sprite("player.png");
         bunker_sprite = new olc::Sprite("bunker.png");
         bunker_decal = new olc::Decal(bunker_sprite);
+        effect_sprite = new olc::Sprite("effects.png");
+        effect_decal = new olc::Decal(effect_sprite);
 		player.position.y = ScreenHeight()-8;
 		player.position.x = (int)ScreenWidth() / 2;
 		Invader lastInvader;
@@ -134,6 +139,11 @@ public:
 					DrawPartialDecal(j.position, invaders_decal, j.sprite_pos, j.sprite_wh, olc::vf2d{ 1.0f, 1.0f }, j.tint);
 				}
 			}
+		}
+
+		// effect render
+		for (const Effect& effect : effects) {
+            DrawPartialDecal(effect.position, effect_decal, olc::vi2d{effect.stage*3, 0}, olc::vi2d{3, 3});
 		}
 
 		// player render
@@ -219,6 +229,9 @@ public:
 								j.alive = false;
 								stop = true;
 								bullet.to_remove = true;
+                                Effect effect;
+                                effect.position = bullet.position;
+                                effects.push_back(effect);
 								break;
 							}
 						}
@@ -230,6 +243,9 @@ public:
                         lives--;
                         std::cout << lives << std::endl;
                         bullet.to_remove = true;
+                        Effect effect;
+                        effect.position = bullet.position;
+                        effects.push_back(effect);
                         continue;
                     }
 				}
@@ -238,6 +254,9 @@ public:
 						bullet_.position.x-2 < bullet.position.x && bullet_.position.x +2 > bullet.position.x) {
 						bullet.to_remove = true;
 						bullet_.to_remove = true;
+                        Effect effect;
+                        effect.position = bullet.position;
+                        effects.push_back(effect);
 						break;
 					}
 				}
@@ -247,6 +266,9 @@ public:
                             bullet.position.x < bunker.position.x + 22 && bullet.position.y >= bunker.position.y) {
                             bullet.to_remove = true;
                             bunker.health--;
+                            Effect effect;
+                            effect.position = bullet.position - olc::vi2d{0,2};
+                            effects.push_back(effect);
                         }
                     }
                 }
@@ -263,7 +285,7 @@ public:
 			bullets.push_back(bullet);
 		}
 
-		// invader moving
+		// invader moving + effect update
 		if (lastInvaderRefresh > refreshTime) {
 			lastInvaderRefresh = 0;
 
@@ -308,6 +330,20 @@ public:
 			if (!row_alive && frameCounter % 5 == front) {
 				front--;
 			}
+
+            // effect update
+            effects.remove_if([](const Effect& n) { return n.to_remove; });
+            for (Effect& effect : effects) {
+                switch (effect.stage) {
+                    case 2:
+                        effect.to_remove = true;
+                        break;
+                    default:
+                        std::cout << "debug" << std::endl;
+                        effect.stage++;
+                }
+            }
+
 			frameCounter++;
 
 		}
@@ -319,7 +355,7 @@ public:
 int main()
 {
 	Example demo;
-	if (demo.Construct(256, 240, 3, 3))
+	if (demo.Construct(256, 150, 3, 3))
 		demo.Start();
 
 	return 0;
