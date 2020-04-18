@@ -24,10 +24,11 @@ short lives = 3;
 std::array<std::array<Invader, 14>, 5> invaders;
 Player player;
 std::list<Bullet> bullets;
+short bunkerHealth[4] = { 5,5,5,5 };
 
 
 inline bool collision_check(Bullet& bullet, Invader& invader) {
-	return (invader.position.x <= bullet.position.x && bullet.position.x <= (invader.position.x + invader.spritewh.x) &&
+	return (invader.position.x <= bullet.position.x && bullet.position.x <= (invader.position.x + invader.sprite_wh.x) &&
 		invader.position.y <= bullet.position.y && bullet.position.y <= (invader.position.y + 8));
 }
 
@@ -55,32 +56,37 @@ public:
 		player.position.x = (int)ScreenWidth() / 2;
 		Invader lastInvader;
 		int invaderBlock = ScreenWidth() / 12;
-		olc::vi2d spritewh;
-		int spritex;
+		olc::vi2d sprite_wh;
+		int sprite_x;
+		olc::Pixel tint;
 
 		for (int i = 0; i < invaders.size(); i++) {
 			switch (i) {
                 case 1:
                 case 2:
-                    spritewh = olc::vi2d{ 11,8 };
-                    spritex = 8;
+                    sprite_wh = olc::vi2d{11, 8 };
+                    sprite_x = 8;
+                    tint = olc::YELLOW;
                     break;
                 case 3:
                 case 4:
-                    spritewh = olc::vi2d{ 12,8 };
-                    spritex = 19;
+                    sprite_wh = olc::vi2d{12, 8 };
+                    sprite_x = 19;
+                    tint = olc::RED;
                     break;
 				default:
-                    spritewh = olc::vi2d{ 8,8 };
-                    spritex = 0;
+                    sprite_wh = olc::vi2d{8, 8 };
+                    sprite_x = 0;
+                    tint = olc::GREEN;
                     break;
 			}
 
 			for (int j = 0; j < invaders[i].size(); j++) {
 				Invader current_invader;
-				current_invader.position = olc::vi2d{ 15*j+(15-spritewh.x/2), 15*i };
-				current_invader.spritewh = spritewh;
-				current_invader.spritepos = olc::vi2d{ spritex, 0 };
+				current_invader.position = olc::vi2d{ 15*j+(15 - sprite_wh.x / 2), 15 * i };
+				current_invader.sprite_wh = sprite_wh;
+				current_invader.sprite_pos = olc::vi2d{sprite_x, 0 };
+				current_invader.tint = tint;
 				invaders[i][j] = current_invader;
 				lastInvader = current_invader;
 			}
@@ -95,6 +101,7 @@ public:
 		shootRefresh += fElapsedTime;
 		invaderShootTimer += fElapsedTime;
 
+		// splash text render + lock
 		if (showSplashText) {
 			Clear(olc::BLACK);
 			DrawString(olc::vi2d{ ScreenWidth()/2 - (int)(splashText.size()*8 / 2),ScreenHeight()/2 - 4 }, splashText);
@@ -107,11 +114,18 @@ public:
 		for (auto & invader : invaders) {
 			for (auto & j : invader) {
 				if (j.alive) {
-					DrawPartialDecal(j.position, invaders_decal, j.spritepos, j.spritewh);
+					DrawPartialDecal(j.position, invaders_decal, j.sprite_pos, j.sprite_wh, olc::vf2d{ 1.0f, 1.0f }, j.tint);
 				}
 			}
 		}
+
+		// player render
 		DrawSprite(player.position, player_sprite);
+
+//		// bunker render
+//		for (const short& bunker : bunkerHealth) {
+//
+//		}
 		
 		// bullet render
 		for (const auto& bullet : bullets) {
@@ -123,7 +137,8 @@ public:
 			}
 		}
 
-		if (lastRefresh > 0.016) { // player input + bullet speed capped at 60 iterations per second
+        // player input + bullet speed capped at 60 iterations per second
+		if (lastRefresh > 0.016) {
 			lastRefresh = 0;
 			
 			if (lives == 0) {
@@ -185,10 +200,11 @@ public:
 				}
 				else {
 					if (collision_check(bullet, player)) {
-						lives--;
-						std::cout << lives << std::endl;
-						bullet.to_remove = true;
-					}
+                        lives--;
+                        std::cout << lives << std::endl;
+                        bullet.to_remove = true;
+                        continue;
+                    }
 				}
 				for (Bullet& bullet_ : bullets) {
 					if (bullet.player != bullet_.player && bullet_.position.y == bullet.position.y && 
@@ -201,7 +217,8 @@ public:
 			}
 		}
 
-		if (invaderShootTimer > 2) { // invaders shooting
+        // invaders shooting
+		if (invaderShootTimer > 2) {
 			invaderShootTimer = 0;
 			Bullet bullet;
 			bullet.player = false;
@@ -210,7 +227,8 @@ public:
 			bullets.push_back(bullet);
 		}
 
-		if (lastInvaderRefresh > refreshTime) { // invader limiter
+		// invader moving
+		if (lastInvaderRefresh > refreshTime) {
 			lastInvaderRefresh = 0;
 
 			if (frameCounter % 5 == 0) { 
@@ -221,7 +239,7 @@ public:
 				for (auto & invader : invaders) { // direction change
 					for (auto & j : invader) {
 						if (!j.alive) { continue; }
-						if (j.position.x + INVADER_SPEED + j.spritewh.x > ScreenWidth() || j.position.x + INVADER_SPEED < 0) {
+						if (j.position.x + INVADER_SPEED + j.sprite_wh.x > ScreenWidth() || j.position.x + INVADER_SPEED < 0) {
 							INVADER_SPEED = -INVADER_SPEED;
 							verticalMove = true;
 							stop = true;
@@ -243,11 +261,11 @@ public:
 					else {
 						i.position.x += INVADER_SPEED;
 					}
-					if (i.spritepos.y == 0) {
-						i.spritepos.y = 8;
+					if (i.sprite_pos.y == 0) {
+						i.sprite_pos.y = 8;
 					}
 					else {
-						i.spritepos.y = 0;
+						i.sprite_pos.y = 0;
 					}
 				}
 			}

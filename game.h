@@ -2,10 +2,11 @@
 #include "olcPixelGameEngine.h"
 
 struct Invader {
-	olc::vi2d position;
-	olc::vi2d spritepos;
-	olc::vi2d spritewh;
+    olc::vi2d position;
+	olc::vi2d sprite_pos;
+	olc::vi2d sprite_wh;
 	bool alive = true;
+	olc::Pixel tint;
 };
 
 struct Player {
