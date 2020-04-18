@@ -25,3 +25,9 @@ struct Bunker {
     olc::vi2d position;
     int health = 5;
 };
+
+struct Effect {
+    olc::vi2d position;
+    bool to_remove = false;
+    int stage = 0;
+};

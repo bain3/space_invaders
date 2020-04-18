@@ -18,7 +18,7 @@ float lastInvaderRefresh;
 float shootRefresh;
 int INVADER_SPEED = 4;
 int PLAYER_SPEED = 1;
-float PLAYER_COOLDOWN = 0.333;
+float PLAYER_COOLDOWN = 0.45;
 bool verticalMove = false;
 short front = 4;
 float invaderShootTimer;
@@ -31,6 +31,7 @@ std::list<Bullet> bullets;
 Bunker bunkers[4];
 int gameLayer;
 std::list<Effect> effects;
+int invader_kill_count = 0;
 
 
 inline bool collision_check(Bullet& bullet, Invader& invader) {
@@ -115,7 +116,7 @@ public:
 #pragma ide diagnostic ignored "cppcoreguidelines-narrowing-conversions"
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-	    EnableLayer(gameLayer, !showSplashText);
+	    EnableLayer(gameLayer, true);
 	    SetDrawTarget(gameLayer);
 		lastRefresh += fElapsedTime;
 		lastInvaderRefresh += fElapsedTime;
@@ -177,16 +178,13 @@ public:
         // player input + bullet speed capped at 60 iterations per second
 		if (lastRefresh > 0.016) {
 			lastRefresh = 0;
-			
-			if (lives == 0) {
+
+            if (front == -1) {
+                splashText = "YOU WIN!";
+                showSplashText = true;
+                return true;
+            } else if (lives == 0 || invaders[front][0].position.y >= ScreenHeight()-46) {
 				splashText = "GAME OVER";
-				showSplashText = true;
-				return true;
-			}
-			
-			
-			else if (front == -1) {
-				splashText = "YOU WIN!";
 				showSplashText = true;
 				return true;
 			}
@@ -226,6 +224,7 @@ public:
 					for (auto & invader : invaders) {
 						for (auto & j : invader) {
 							if (j.alive && collision_check(bullet, j)) {
+							    invader_kill_count++;
 								j.alive = false;
 								stop = true;
 								bullet.to_remove = true;
@@ -278,16 +277,46 @@ public:
         // invaders shooting
 		if (invaderShootTimer > 2) {
 			invaderShootTimer = 0;
+			Invader first;
+			Invader last;
+			for (auto & i : invaders[front]) {
+			    if (i.alive) {
+			        first = i;
+			        break;
+			    }
+			}
+			for (int i=invaders[front].size()-1; i >= 0; i--) {
+			    if (invaders[front][i].alive) {
+			        last = invaders[front][i];
+			        break;
+			    }
+			}
 			Bullet bullet;
+			if (player.position.x <= first.position.x) {
+			    bullet.position = olc::vi2d{ first.position.x+4, 15*(front+1)+invaders[0][0].position.y+5 };
+			} else if (player.position.x >= last.position.x) {
+                bullet.position = olc::vi2d{ last.position.x+4, 15*(front+1)+invaders[0][0].position.y+5 };
+			} else {
+                int invader_position = (int)((player.position.x+6-invaders[0][0].position.x)/15);
+                int x_position = invaders[front][invader_position].position.x;
+                bullet.position = olc::vi2d{ 15*(int)(player.position.x/15)+4+invaders[0][0].position.x%15, 15*(front+1)+invaders[0][0].position.y+5 };
+			}
+            bullet.bulletSpeed = 1;
 			bullet.player = false;
-			bullet.position = olc::vi2d{ player.position.x+6, 15*(front+1)+invaders[0][0].position.y+5 };
-			bullet.bulletSpeed = 1;
-			bullets.push_back(bullet);
+            bullets.push_back(bullet);
 		}
 
 		// invader moving + effect update
 		if (lastInvaderRefresh > refreshTime) {
 			lastInvaderRefresh = 0;
+			if (invader_kill_count > 25) {
+			    if (INVADER_SPEED < 0) {
+			        INVADER_SPEED -= 2;
+			    } else {
+                    INVADER_SPEED += 2;
+                }
+			    invader_kill_count -= 10;
+			}
 
 			if (frameCounter % 5 == 0) { 
 				bool stop = false;
@@ -328,6 +357,7 @@ public:
 				}
 			}
 			if (!row_alive && frameCounter % 5 == front) {
+			    std::cout << "front: " << front << std::endl;
 				front--;
 			}
 
@@ -339,7 +369,6 @@ public:
                         effect.to_remove = true;
                         break;
                     default:
-                        std::cout << "debug" << std::endl;
                         effect.stage++;
                 }
             }
@@ -355,7 +384,7 @@ public:
 int main()
 {
 	Example demo;
-	if (demo.Construct(256, 150, 3, 3))
+	if (demo.Construct(256, 176, 3, 3))
 		demo.Start();
 
 	return 0;
