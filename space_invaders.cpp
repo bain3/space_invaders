@@ -24,7 +24,7 @@ short lives = 3;
 std::array<std::array<Invader, 14>, 5> invaders;
 Player player;
 std::list<Bullet> bullets;
-short bunkerHealth[4] = { 5,5,5,5 };
+int bunkerHealth[4] = { 5,5,5,5 };
 
 
 inline bool collision_check(Bullet& bullet, Invader& invader) {
@@ -94,6 +94,8 @@ public:
 		return true;
 	}
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-narrowing-conversions"
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		lastRefresh += fElapsedTime;
@@ -122,10 +124,12 @@ public:
 		// player render
 		DrawSprite(player.position, player_sprite);
 
-//		// bunker render
-//		for (const short& bunker : bunkerHealth) {
-//
-//		}
+		// bunker health render
+		int steps = ScreenWidth()/4;
+		for (int i = 0; i < 4; i++) {
+		    std::string text = std::to_string(bunkerHealth[i]);
+		    DrawString(olc::vi2d{ steps*(i+1)-(int)(text.size()*8 / 2)-steps/2,ScreenHeight()-20 }, text);
+		}
 		
 		// bullet render
 		for (const auto& bullet : bullets) {
@@ -277,6 +281,7 @@ public:
 		}
 		return true;
 	}
+#pragma clang diagnostic pop
 };
 
 int main()
