@@ -7,6 +7,8 @@
 olc::Sprite* player_sprite;
 olc::Decal* invaders_decal;
 olc::Sprite* invaders_sprite;
+olc::Sprite* bunker_sprite;
+olc::Decal* bunker_decal;
 int frameCounter = 5;
 float refreshTime = 0.08;
 float lastRefresh;
@@ -25,6 +27,7 @@ std::array<std::array<Invader, 14>, 5> invaders;
 Player player;
 std::list<Bullet> bullets;
 int bunkerHealth[4] = { 5,5,5,5 };
+int gameLayer;
 
 
 inline bool collision_check(Bullet& bullet, Invader& invader) {
@@ -49,9 +52,12 @@ public:
 public:
 	bool OnUserCreate() override
 	{
+        gameLayer = CreateLayer();
 		invaders_sprite = new olc::Sprite("invaders.png");
 		invaders_decal = new olc::Decal(invaders_sprite);
 		player_sprite = new olc::Sprite("player.png");
+        bunker_sprite = new olc::Sprite("bunker.png");
+        bunker_decal = new olc::Decal(bunker_sprite);
 		player.position.y = ScreenHeight()-8;
 		player.position.x = (int)ScreenWidth() / 2;
 		Invader lastInvader;
@@ -59,6 +65,7 @@ public:
 		olc::vi2d sprite_wh;
 		int sprite_x;
 		olc::Pixel tint;
+
 
 		for (int i = 0; i < invaders.size(); i++) {
 			switch (i) {
@@ -98,6 +105,8 @@ public:
 #pragma ide diagnostic ignored "cppcoreguidelines-narrowing-conversions"
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+	    EnableLayer(gameLayer, !showSplashText);
+	    SetDrawTarget(gameLayer);
 		lastRefresh += fElapsedTime;
 		lastInvaderRefresh += fElapsedTime;
 		shootRefresh += fElapsedTime;
@@ -124,12 +133,23 @@ public:
 		// player render
 		DrawSprite(player.position, player_sprite);
 
-		// bunker health render
-		int steps = ScreenWidth()/4;
+        // bunker render
+        int steps = ScreenWidth()/4;
+        for (int i = 0; i < 4; i++) {
+            if (bunkerHealth[i] > 0) {
+                DrawDecal(olc::vi2d{ steps*(i+1)-11-steps/2,ScreenHeight()-30 }, bunker_decal);
+            }
+        }
+
+		// overlay render
+		SetDrawTarget(nullptr);
+        Clear(olc::BLANK);
 		for (int i = 0; i < 4; i++) {
 		    std::string text = std::to_string(bunkerHealth[i]);
-		    DrawString(olc::vi2d{ steps*(i+1)-(int)(text.size()*8 / 2)-steps/2,ScreenHeight()-20 }, text);
+		    DrawString(olc::vi2d{ steps*(i+1)-(int)(text.size()*8 / 2)-steps/2+1,ScreenHeight()-27 }, text);
 		}
+        DrawString(olc::vi2d{ 10,10 }, std::to_string(lives));
+		SetDrawTarget(gameLayer);
 		
 		// bullet render
 		for (const auto& bullet : bullets) {
@@ -287,7 +307,7 @@ public:
 int main()
 {
 	Example demo;
-	if (demo.Construct(256, 240, 4, 4))
+	if (demo.Construct(256, 240, 3, 3))
 		demo.Start();
 
 	return 0;
